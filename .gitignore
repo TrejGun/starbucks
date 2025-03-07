@@ -1,0 +1,31 @@
+# Project
+**/dist/
+postgres/
+contracts/typechain-types/
+contracts/artifacts/
+contracts/cache/
+contracts/coverage/
+besu/
+coverage.json
+
+# IDE
+.idea
+.vscode
+
+# OS
+.DS_Store
+
+# NODE
+node_modules/
+npm-debug.log
+package-lock.json
+yarn.lock
+/lerna-debug.log
+/report.*.json
+
+# env
+.env.*
+!.env.sample
+
+ethberry-development-firebase.json
+halogen-framing-key.json

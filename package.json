@@ -1,0 +1,51 @@
+{
+  "author": {
+    "email": "oleg@ethberry.io",
+    "name": "Oleg Gun",
+    "url": "https://ethberry.io/"
+  },
+  "bugs": {
+    "url": "https://github.com/ethberry/stars-to-usdt/"
+  },
+  "dependencies": {
+    "@nestjs/common": "11.0.11",
+    "@nestjs/config": "4.0.1",
+    "@nestjs/core": "11.0.11",
+    "axios": "1.8.2",
+    "nestjs-telegraf": "2.8.1",
+    "reflect-metadata": "0.2.2",
+    "telegraf": "4.16.3"
+  },
+  "devDependencies": {
+    "@ethberry/cross-env": "0.0.5",
+    "@ethberry/eslint-config": "5.0.5",
+    "@types/node": "22.13.9",
+    "husky": "9.1.7",
+    "lint-staged": "15.4.3",
+    "rimraf": "6.0.1",
+    "ts-node": "10.9.2",
+    "tsc-watch": "6.2.1"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "license": "UNLICENSED",
+  "main": "./dist/index.js",
+  "name": "@ethberry/stars-to-usdt",
+  "private": true,
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ethberry/stars-to-usdt/"
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "cross-env NODE_ENV=${NODE_ENV:=development} tsc-watch --onSuccess \"node .\" --onFailure \"echo Compilation Failed\"",
+    "format": "prettier --write \"src/**/*.ts\"",
+    "lint": "eslint . --fix",
+    "prebuild": "rimraf dist/",
+    "start": "cross-env NODE_ENV=${NODE_ENV:=production} node .",
+    "test": "cross-env NODE_ENV=${NODE_ENV:=test} jest --config jest.config.json --detectOpenHandles",
+    "prepare": "husky"
+  },
+  "version": "0.0.1"
+}
