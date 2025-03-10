@@ -5,19 +5,6 @@ import type { Message as MessageType } from "@telegraf/types";
 
 import { TonService } from "../ton/ton.service";
 
-enum PaymentStatus {
-  IDLE = "IDLE",
-  WAITING = "WAITING",
-  COMPLETED = "COMPLETED",
-}
-
-interface ISessionData {
-  paymentStatus: PaymentStatus;
-  lastPaymentId?: string;
-  starsAmount?: number;
-  usdtAmount?: number;
-}
-
 @Injectable()
 export class BotService {
   private readonly conversionRate: number;
@@ -50,10 +37,7 @@ export class BotService {
     await ctx.reply(helpMessage);
   }
 
-  public async initiateExchange(ctx: Context) {
-    // Устанавливаем статус в сессии
-    this.setSessionData(ctx, { paymentStatus: PaymentStatus.IDLE });
-
+  public async exchangeCommand(ctx: Context) {
     const message =
       "Чтобы обменять звездочки на USDT, отправьте звездочки боту.\n\n" +
       `Курс обмена: ${this.conversionRate} звездочек = 1 USDT\n` +
@@ -61,69 +45,27 @@ export class BotService {
 
     await ctx.reply(message);
 
-    try {
-      // Создаем платежное поручение на звездочки
-      await this.sendInvoice(ctx, this.minAmount);
+    // TODO allow user to select 1, 10, 100 USDT
 
-      // Обновляем статус в сессии
-      this.setSessionData(ctx, { paymentStatus: PaymentStatus.WAITING });
-    } catch (error) {
-      this.loggerService.error(error);
-      await ctx.reply("Произошла ошибка при создании платежного поручения. Попробуйте позже.");
-    }
+    await this.sendInvoice(ctx, this.minAmount);
   }
 
-  public async checkStatus(ctx: Context) {
-    const session = this.getSessionData(ctx);
-
-    let statusMessage = "Статус обмена: ";
-
-    switch (session.paymentStatus) {
-      case PaymentStatus.IDLE:
-        statusMessage += "Нет активных обменов. Используйте /exchange для начала обмена.";
-        break;
-      case PaymentStatus.WAITING:
-        statusMessage += "Ожидание получения звездочек...";
-        break;
-      case PaymentStatus.COMPLETED:
-        statusMessage += `Завершен!\nОбменяно ${session.starsAmount} звездочек на ${session.usdtAmount} USDT.`;
-        break;
-    }
-
-    await ctx.reply(statusMessage);
-  }
-
-  private getSessionData(ctx: Context): ISessionData {
-    return (ctx as any).session || { paymentStatus: PaymentStatus.IDLE };
-  }
-
-  private setSessionData(ctx: Context, data: Partial<ISessionData>) {
-    if (!(ctx as any).session) {
-      (ctx as any).session = { paymentStatus: PaymentStatus.IDLE };
-    }
-
-    (ctx as any).session = {
-      ...(ctx as any).session,
-      ...data,
-    };
-  }
-
-  private async sendInvoice(ctx: Context, amount: number): Promise<void> {
+  private async sendInvoice(ctx: Context, amount: number) {
     const chatId = ctx.chat?.id;
     if (!chatId) {
       throw new Error("Chat ID not found");
     }
 
     await ctx.sendInvoice({
-      title: "Покупка звездочек",
-      description: `Приобретение ${amount} звездочек для обмена на USDT`,
+      title: "Withdraw",
+      description: `Send stars to receive USDT`,
       currency: "XTR",
-      payload: `stars_purchase_${Date.now()}`,
+      payload: new Date().toISOString(),
       provider_token: "",
       prices: [
         {
-          label: `${amount} звездочек`,
-          amount: amount,
+          label: "1 star",
+          amount: 1,
         },
       ],
     });
@@ -132,11 +74,11 @@ export class BotService {
   }
 
   public async handlePreCheckoutQuery(ctx: Context) {
-    // TODO check USDT balance
+    // TODO check available USDT balance
     await ctx.answerPreCheckoutQuery(true);
   }
 
-  public async handleSuccessfulPayment(ctx: Context): Promise<void> {
+  public async handleSuccessfulPayment(ctx: Context) {
     const chatId = ctx.chat?.id;
     if (!chatId) {
       throw new Error("Chat ID not found");

@@ -16,8 +16,8 @@
     "axios": "1.8.2",
     "nestjs-telegraf": "2.8.1",
     "reflect-metadata": "0.2.2",
-    "telegraf": "4.16.3",
-    "rxjs": "7.8.2"
+    "rxjs": "7.8.2",
+    "telegraf": "4.16.3"
   },
   "devDependencies": {
     "@ethberry/cross-env": "0.0.5",
@@ -46,9 +46,9 @@
     "format": "prettier --write \"src/**/*.ts\"",
     "lint": "eslint . --fix",
     "prebuild": "rimraf dist/",
+    "prepare": "husky",
     "start": "cross-env NODE_ENV=${NODE_ENV:=production} node .",
-    "test": "cross-env NODE_ENV=${NODE_ENV:=test} jest --config jest.config.json --detectOpenHandles",
-    "prepare": "husky"
+    "test": "cross-env NODE_ENV=${NODE_ENV:=test} jest --config jest.config.json --detectOpenHandles"
   },
   "version": "0.0.1"
 }

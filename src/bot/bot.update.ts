@@ -8,32 +8,27 @@ export class BotUpdate {
   constructor(private readonly botService: BotService) {}
 
   @Start()
-  async start(@Ctx() ctx: Context) {
+  public start(@Ctx() ctx: Context) {
     return this.botService.startCommand(ctx);
   }
 
   @Command("help")
-  async help(@Ctx() ctx: Context) {
+  public help(@Ctx() ctx: Context) {
     return this.botService.helpCommand(ctx);
   }
 
   @Command("exchange")
-  async exchange(@Ctx() ctx: Context) {
-    return this.botService.initiateExchange(ctx);
-  }
-
-  @Command("status")
-  async status(@Ctx() ctx: Context) {
-    return this.botService.checkStatus(ctx);
+  public exchange(@Ctx() ctx: Context) {
+    return this.botService.exchangeCommand(ctx);
   }
 
   @On("pre_checkout_query")
-  async onPreCheckoutQuery(@Ctx() ctx: Context) {
+  public onPreCheckoutQuery(@Ctx() ctx: Context) {
     return this.botService.handlePreCheckoutQuery(ctx);
   }
 
   @On("successful_payment")
-  async onPaymentReceived(@Ctx() ctx: Context) {
+  public onPaymentReceived(@Ctx() ctx: Context) {
     return this.botService.handleSuccessfulPayment(ctx);
   }
 }
