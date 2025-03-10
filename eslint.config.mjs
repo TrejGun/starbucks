@@ -7,6 +7,7 @@ export default [
   {
     ignores: [
       "**/dist",
+      "src/database/supabase.types.ts"
     ]
   },
 

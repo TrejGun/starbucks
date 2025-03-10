@@ -8,11 +8,13 @@
     "url": "https://github.com/ethberry/stars-to-usdt/"
   },
   "dependencies": {
+    "@ethberry/constants": "0.13.7",
     "@nestjs/axios": "4.0.0",
     "@nestjs/common": "11.0.11",
     "@nestjs/config": "4.0.1",
     "@nestjs/core": "11.0.11",
     "@nestjs/platform-express": "11.0.11",
+    "@supabase/supabase-js": "2.49.1",
     "axios": "1.8.2",
     "nestjs-telegraf": "2.8.1",
     "reflect-metadata": "0.2.2",
@@ -26,6 +28,7 @@
     "husky": "9.1.7",
     "lint-staged": "15.4.3",
     "rimraf": "6.0.1",
+    "supabase": "2.2.1",
     "ts-node": "10.9.2",
     "tsc-watch": "6.2.1"
   },
@@ -48,6 +51,7 @@
     "prebuild": "rimraf dist/",
     "prepare": "husky",
     "start": "cross-env NODE_ENV=${NODE_ENV:=production} node .",
+    "supabase:gen": "supabase gen types --lang=typescript --project-id fhrnkebmodudkpasukps > ./src/database/supabase.types.ts",
     "test": "cross-env NODE_ENV=${NODE_ENV:=test} jest --config jest.config.json --detectOpenHandles"
   },
   "version": "0.0.1"

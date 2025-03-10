@@ -2,8 +2,10 @@ import { Inject, Injectable, Logger, LoggerService } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { Context } from "telegraf";
 import type { Message as MessageType } from "@telegraf/types";
+import { SupabaseClient } from "@supabase/supabase-js";
 
 import { TonService } from "../ton/ton.service";
+import { SUPABASE_PROVIDER } from "../database/database.provider";
 
 @Injectable()
 export class BotService {
@@ -13,6 +15,8 @@ export class BotService {
   constructor(
     @Inject(Logger)
     private readonly loggerService: LoggerService,
+    @Inject(SUPABASE_PROVIDER)
+    private readonly supabase: SupabaseClient,
     private readonly configService: ConfigService,
     private readonly tonService: TonService,
   ) {
@@ -97,7 +101,15 @@ export class BotService {
 
     this.loggerService.log(`Successful payment received: ${JSON.stringify(successful_payment)}`);
 
-    // TODO save from, receipt, date and amount to DB
+    await this.supabase
+      .from("transactions")
+      .insert({
+        telegram_user_id: fromId,
+        amount: 100, // TODO fixme: amount in USDT
+        receipt: successful_payment.telegram_payment_charge_id,
+        stars: successful_payment.total_amount,
+      })
+      .throwOnError();
 
     await this.tonService.sendUsdtToUserWallet(chatId, fromId, successful_payment.total_amount);
 
