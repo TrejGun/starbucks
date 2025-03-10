@@ -1,14 +1,17 @@
-import { Injectable, Logger } from "@nestjs/common";
+import { Inject, Injectable, Logger, LoggerService } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import axios from "axios";
 
 @Injectable()
 export class TonService {
-  private readonly logger = new Logger(TonService.name);
   private readonly botToken: string;
   private readonly telegramApiUrl = "https://api.telegram.org";
 
-  constructor(private readonly configService: ConfigService) {
+  constructor(
+    @Inject(Logger)
+    private readonly loggerService: LoggerService,
+    private readonly configService: ConfigService,
+  ) {
     this.botToken = this.configService.get<string>("BOT_TOKEN", "");
   }
 
@@ -40,7 +43,7 @@ export class TonService {
         error: "Failed to send USDT payment",
       };
     } catch (error) {
-      this.logger.error("Error sending USDT to user wallet:", error);
+      this.loggerService.error("Error sending USDT to user wallet:", error);
       return {
         success: false,
         error: error.message || "Unknown error",

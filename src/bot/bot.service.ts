@@ -1,12 +1,17 @@
-import { Injectable, Logger } from "@nestjs/common";
+import { Inject, Injectable, Logger, LoggerService } from "@nestjs/common";
 import { Context } from "telegraf";
 import { ConfigService } from "@nestjs/config";
 
-import { PaymentsService } from "./payments.service";
-import { TonService } from "./ton.service";
+import { TonService } from "../ton/ton.service";
+
+enum PaymentStatus {
+  IDLE = "IDLE",
+  WAITING = "WAITING",
+  COMPLETED = "COMPLETED",
+}
 
 interface ISessionData {
-  paymentStatus: "idle" | "waiting" | "completed";
+  paymentStatus: PaymentStatus;
   lastPaymentId?: string;
   starsAmount?: number;
   usdtAmount?: number;
@@ -14,17 +19,19 @@ interface ISessionData {
 
 @Injectable()
 export class BotService {
-  private readonly logger = new Logger(BotService.name);
   private readonly conversionRate: number;
   private readonly minAmount: number;
+  private readonly paymentsToken: string;
 
   constructor(
+    @Inject(Logger)
+    private readonly loggerService: LoggerService,
     private readonly configService: ConfigService,
-    private readonly paymentsService: PaymentsService,
     private readonly tonService: TonService,
   ) {
     this.conversionRate = this.configService.get<number>("CONVERSION_RATE", 100);
     this.minAmount = this.configService.get<number>("MIN_AMOUNT", 100);
+    this.paymentsToken = this.configService.get<string>("PAYMENTS_TOKEN", "");
   }
 
   async startCommand(ctx: Context) {
@@ -46,33 +53,23 @@ export class BotService {
 
   async initiateExchange(ctx: Context) {
     // Устанавливаем статус в сессии
-    this.setSessionData(ctx, { paymentStatus: "idle" });
+    this.setSessionData(ctx, { paymentStatus: PaymentStatus.IDLE });
 
     const message =
       "Чтобы обменять звездочки на USDT, отправьте звездочки боту.\n\n" +
       `Курс обмена: ${this.conversionRate} звездочек = 1 USDT\n` +
       `Минимальная сумма: ${this.minAmount} звездочек`;
 
+    await ctx.reply(message);
+
     try {
       // Создаем платежное поручение на звездочки
-      const paymentLink = await this.paymentsService.createStarsPaymentLink({
-        amount: this.minAmount,
-        description: "Обмен звездочек на USDT",
-        hidden_message: "Спасибо за обмен!",
-        allow_anonymous: false,
-        allow_foreign_from_user_id: true,
-      });
-
-      await ctx.reply(message, {
-        reply_markup: {
-          inline_keyboard: [[{ text: "Отправить звездочки", url: paymentLink }]],
-        },
-      });
+      await this.sendInvoice(ctx, this.minAmount);
 
       // Обновляем статус в сессии
-      this.setSessionData(ctx, { paymentStatus: "waiting" });
+      this.setSessionData(ctx, { paymentStatus: PaymentStatus.WAITING });
     } catch (error) {
-      this.logger.error("Ошибка при создании платежа:", error);
+      this.loggerService.error("Ошибка при создании платежа:", error);
       await ctx.reply("Произошла ошибка при создании платежного поручения. Попробуйте позже.");
     }
   }
@@ -83,13 +80,13 @@ export class BotService {
     let statusMessage = "Статус обмена: ";
 
     switch (session.paymentStatus) {
-      case "idle":
+      case PaymentStatus.IDLE:
         statusMessage += "Нет активных обменов. Используйте /exchange для начала обмена.";
         break;
-      case "waiting":
+      case PaymentStatus.WAITING:
         statusMessage += "Ожидание получения звездочек...";
         break;
-      case "completed":
+      case PaymentStatus.COMPLETED:
         statusMessage += `Завершен!\nОбменяно ${session.starsAmount} звездочек на ${session.usdtAmount} USDT.`;
         break;
     }
@@ -112,7 +109,7 @@ export class BotService {
 
       // Обновляем данные сессии
       this.setSessionData(ctx, {
-        paymentStatus: "completed",
+        paymentStatus: PaymentStatus.COMPLETED,
         starsAmount,
         usdtAmount,
         lastPaymentId: paymentId,
@@ -157,24 +154,95 @@ export class BotService {
         );
       }
     } catch (error) {
-      this.logger.error("Ошибка при обработке платежа:", error);
+      this.loggerService.error("Ошибка при обработке платежа:", error);
       await ctx.reply("Произошла ошибка при обработке платежа. Пожалуйста, попробуйте позже.");
     }
   }
 
   // Вспомогательные методы для работы с сессией
   private getSessionData(ctx: Context): ISessionData {
-    return (ctx as any).session || { paymentStatus: "idle" };
+    return (ctx as any).session || { paymentStatus: PaymentStatus.IDLE };
   }
 
   private setSessionData(ctx: Context, data: Partial<ISessionData>) {
     if (!(ctx as any).session) {
-      (ctx as any).session = { paymentStatus: "idle" };
+      (ctx as any).session = { paymentStatus: PaymentStatus.IDLE };
     }
 
     (ctx as any).session = {
       ...(ctx as any).session,
       ...data,
     };
+  }
+
+  /**
+   * Отправляет счет на оплату (используя sendInvoice)
+   */
+  async sendInvoice(ctx: Context, starsAmount: number): Promise<void> {
+    try {
+      const chatId = ctx.chat?.id;
+      if (!chatId) {
+        throw new Error("Chat ID not found");
+      }
+
+      // Расчет суммы в наименьших единицах валюты (копейки, центы и т.д.)
+      // Предполагаем, что мы используем условные единицы для звездочек
+      const amount = starsAmount * 100; // Умножаем на 100 для конвертации в наименьшие единицы
+
+      const title = "Покупка звездочек";
+      const description = `Приобретение ${starsAmount} звездочек для обмена на USDT`;
+      const payload = `stars_purchase_${Date.now()}`;
+
+      await ctx.sendInvoice({
+        title,
+        currency: "USDT",
+        description,
+        payload,
+        provider_token: this.paymentsToken,
+        prices: [
+          {
+            label: `${starsAmount} звездочек`,
+            amount,
+          },
+        ],
+      });
+
+      this.loggerService.log(`Invoice sent to chat ${chatId} for ${starsAmount} stars`);
+    } catch (error) {
+      this.loggerService.error("Error sending invoice:", error);
+      throw error;
+    }
+  }
+
+  /**
+   * Метод для обработки успешного платежа
+   */
+  async handleSuccessfulPayment(ctx: Context): Promise<{
+    amount: number;
+    transactionId: string;
+    currency: string;
+  }> {
+    try {
+      const message = ctx.message as any;
+      if (!message?.successful_payment) {
+        throw new Error("No successful payment data found");
+      }
+
+      const { successful_payment } = message;
+
+      this.loggerService.log(`Successful payment received: ${JSON.stringify(successful_payment)}`);
+
+      // Конвертируем сумму обратно из наименьших единиц (cents -> dollars)
+      const amount = successful_payment.total_amount / 100;
+
+      return Promise.resolve({
+        amount: amount,
+        transactionId: successful_payment.telegram_payment_charge_id,
+        currency: successful_payment.currency,
+      });
+    } catch (error) {
+      this.loggerService.error("Error handling successful payment:", error);
+      throw error;
+    }
   }
 }
