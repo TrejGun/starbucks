@@ -27,6 +27,11 @@ export class BotUpdate {
     return this.botService.checkStatus(ctx);
   }
 
+  @On("pre_checkout_query")
+  async onPreCheckoutQuery(@Ctx() ctx: Context) {
+    return this.botService.handlePreCheckoutQuery(ctx);
+  }
+
   @On("successful_payment")
   async onPaymentReceived(@Ctx() ctx: Context) {
     return this.botService.handleSuccessfulPayment(ctx);

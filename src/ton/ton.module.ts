@@ -1,9 +1,11 @@
-import { Module } from "@nestjs/common";
+import { Logger, Module } from "@nestjs/common";
+import { ConfigModule } from "@nestjs/config";
 
 import { TonService } from "./ton.service";
 
 @Module({
-  providers: [TonService],
+  imports: [ConfigModule],
+  providers: [Logger, TonService],
   exports: [TonService],
 })
 export class TonModule {}
